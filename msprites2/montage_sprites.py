@@ -11,8 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 FFMPEG_THUMBNAIL_COMMAND = """
-    ffmpeg -loglevel error -i {input} -vf fps={ips} -s {width}x{height} {output}
+    ffmpeg -loglevel error -i {input} -r 1/{ips} -vf scale={width}:{height} {output}
 """
+# ffmpeg -loglevel error -i {input} -vf fps={ips} -s {width}x{height} {output}
 # ffmpeg -i ~/Downloads/SampleVideo_360x240_20mb.mp4 -vf fps=1/24 -s 128x72 sprites/images/%d.png
 
 if shutil.which('magick'):

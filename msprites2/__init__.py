@@ -1,4 +1,4 @@
-from montage_sprites import MontageSprites
+from .montage_sprites import MontageSprites
 
 
-__all__ = [MontageSprites,]
+__all__ = [MontageSprites, ]
