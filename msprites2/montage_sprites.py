@@ -57,10 +57,10 @@ class MontageSprites:
         return count
 
     def generate_thumbs(self):
-        os.path.join(self.thumbnail_dir, self.FILENAME_FORMAT)
+        output = os.path.join(self.thumbnail_dir, self.FILENAME_FORMAT)
         cmd = FFMPEG_THUMBNAIL_COMMAND.format(
             input=self.video_path, ips=self.IPS, width=self.WIDTH,
-            height=self.HEIGHT, output=self.thumbnail_dir,
+            height=self.HEIGHT, output=output,
         )
 
         logger.debug(f"ffmpeg generate thumbnails [{cmd}]")
