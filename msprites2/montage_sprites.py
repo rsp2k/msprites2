@@ -31,8 +31,7 @@ class MontageSprites:
     HEIGHT = 288
     ROWS = 30
     COLS = 30
-    FILENAME_FORMAT = "%04d{ext}"
-    EXT = ".jpg"
+    FILENAME_FORMAT = "%04d.jpg"
 
     WEBVTT_HEADER = "WEBVTT\n"
     WEBVTT_TIME_FORMAT = "%H:%M:%S"
@@ -48,7 +47,7 @@ class MontageSprites:
 
     def frame_filename(self, number):
         name = self.FILENAME_FORMAT % number
-        return name.format(ext=self.EXT)
+        return name
 
     def count_files(self):
         count = 0
@@ -58,6 +57,7 @@ class MontageSprites:
         return count
 
     def generate_thumbs(self):
+        os.path.join(self.thumbnail_dir, self.FILENAME_FORMAT)
         cmd = FFMPEG_THUMBNAIL_COMMAND.format(
             input=self.video_path, ips=self.IPS, width=self.WIDTH,
             height=self.HEIGHT, output=self.thumbnail_dir,
