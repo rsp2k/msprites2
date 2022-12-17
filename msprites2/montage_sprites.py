@@ -13,20 +13,15 @@ logger = logging.getLogger(__name__)
 FFMPEG_THUMBNAIL_COMMAND = """
     ffmpeg -loglevel error -i {input} -r 1/{ips} -vf scale={width}:{height} {output}
 """
-# ffmpeg -loglevel error -i {input} -vf fps={ips} -s {width}x{height} {output}
-# ffmpeg -i ~/Downloads/SampleVideo_360x240_20mb.mp4 -vf fps=1/24 -s 128x72 sprites/images/%d.png
 
+MONTAGE_COMMAND = """
+    montage -background '#336699' -tile: {rows}x{cols} -geometry {width}x{height}+0+0 {input}/* {output}"""
 if shutil.which('magick'):
-    MONTAGE_COMMAND = """
-    magick montage -background '#336699' -tile {rows}x{cols} -geometry {width}x{height}+0+0 {input}/* {output}
-"""
-else:
-    MONTAGE_COMMAND = """
-    montage -background '#336699' -tile {rows}x{cols} -geometry {width}x{height}+0+0 {input}/* {output}"""
+    MONTAGE_COMMAND = "magick " + MONTAGE_COMMAND
 
 
 class MontageSprites:
-    IPS = 5 #  will be used as 1/5 one in every 5 sec
+    IPS = 1 #  will be used as 1 in every 5 sec
     WIDTH = 512
     HEIGHT = 288
     ROWS = 30
@@ -104,7 +99,6 @@ class MontageSprites:
         start, end, filename = 0, self.IPS, ""
         w, h, gridsize = self.WIDTH, self.HEIGHT, self.ROWS * self.COLS
         for i in range(0, self.count_files()):
-
             filename = self.frame_filename((i+1)//gridsize)
             contents += [
                 self.WEBVTT_TIMELINE_FORMAT.format(
