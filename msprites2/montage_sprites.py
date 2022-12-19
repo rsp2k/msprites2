@@ -35,14 +35,14 @@ class MontageSprites:
 
     video_path = None
     thumbnail_dir = None
+    sprite_file = None
 
     def __init__(self, video_path, thumbnail_dir):
         self.video_path = video_path
         self.thumbnail_dir = thumbnail_dir
 
     def frame_filename(self, number):
-        name = self.FILENAME_FORMAT % number
-        return name
+        return self.sprite_file
 
     def count_files(self):
         count = 0
@@ -63,6 +63,7 @@ class MontageSprites:
         logger.debug(f"ffmpeg generate thumbnails [{cmd}]\n{result}")
 
     def generate_sprite(self, sprite_file):
+        self.sprite_file = sprite_file
         cmd = MONTAGE_COMMAND.format(
             rows=self.ROWS,
             cols=self.COLS,
@@ -126,7 +127,7 @@ class MontageSprites:
             elif os.listdir(thumbnail_dir):
                 raise Exception(f"There are already files in {thumbnail_dir}!")
         else:
-            os.makedirs(thumbnail_dir, mode=0o777)
+            mkdirs(thumbnail_dir, mode=0o777)
 
         montage = MontageSprites(
             video_path=video_path,
