@@ -122,12 +122,10 @@ class MontageSprites:
     @classmethod
     def from_media(cls, video_path, thumbnail_dir, sprite_file, webvtt_file, delete_existing_thumbnail_dir=False):
         if os.path.isdir(thumbnail_dir):
-            if delete_existing_thumbnail_dir:
-                shutil.rmtree(thumbnail_dir)
-            elif os.listdir(thumbnail_dir):
+            if os.listdir(thumbnail_dir):
                 raise Exception(f"There are already files in {thumbnail_dir}!")
         else:
-            mkdirs(thumbnail_dir, mode=0o777)
+            raise Exception(f"{thumbnail_dir} doesn't exist, create it before calling MontageSprites.from_media()")
 
         montage = MontageSprites(
             video_path=video_path,
