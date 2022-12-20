@@ -43,6 +43,9 @@ class MontageSprites:
         if not os.path.isdir(self.thumbnail_dir):
             os.mkdir(self.thumbnail_dir, mode=0o777)
 
+    def frame_filename(self, number):
+        return self.sprite_file
+
     def count_files(self):
         count = 0
         for path in os.scandir(self.thumbnail_dir):
@@ -96,10 +99,10 @@ class MontageSprites:
 
     def webvtt_content(self):
         contents = [self.WEBVTT_HEADER]
+        file_name = os.path.split(self.sprite_file)[1]
         start, end, filename = 0, self.IPS, ""
-        w, h, grid_size = self.WIDTH, self.HEIGHT, self.ROWS * self.COLS
+        w, h, gridsize = self.WIDTH, self.HEIGHT, self.ROWS * self.COLS
         for i in range(0, self.count_files()):
-            filename = self.sprite_file
             contents += [
                 self.WEBVTT_TIMELINE_FORMAT.format(
                     start=self.ips_seconds_to_timestamp(start),
@@ -107,7 +110,7 @@ class MontageSprites:
                 ),
                 self.WEBVTT_IMAGE_TITLE_FORMAT.format(
                     x=self.webvtt_getx(i, w, h), y=self.webvtt_gety(i, w, h),
-                    w=w, h=h, filename=filename,
+                    w=w, h=h, filename=file_name,
                 )
             ]
             start = end
@@ -115,7 +118,7 @@ class MontageSprites:
         return contents
 
     def generate_webvtt(self, webvtt_file):
-        with open(os.path.join(self.thumbnail_dir, webvtt_file), "w") as f:
+        with open(webvtt_file, "w") as f:
             f.writelines(self.webvtt_content())
 
     @classmethod
