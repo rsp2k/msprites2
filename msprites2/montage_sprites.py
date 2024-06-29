@@ -15,10 +15,9 @@ FFMPEG_THUMBNAIL_COMMAND = """
 """
 
 MONTAGE_COMMAND = """montage -background '#336699' -tile: {rows}x{cols} -geometry {width}x{height}+0+0 {input}/* {output}"""
+# Check for imagemagick6
 if shutil.which('magick'):
     MONTAGE_COMMAND = "magick " + MONTAGE_COMMAND
-else:
-    warnings.warn(f"{MONTAGE_COMMAND} not found in path. Unable to create frame sprite image!")
 
 
 class MontageSprites:
