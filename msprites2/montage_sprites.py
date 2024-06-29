@@ -5,7 +5,7 @@ import subprocess
 import shutil
 import logging
 import time
-
+import warnings
 
 logger = logging.getLogger(__name__)
 
@@ -14,10 +14,11 @@ FFMPEG_THUMBNAIL_COMMAND = """
     ffmpeg -loglevel error -i {input} -r 1/{ips} -vf scale={width}:{height} {output}
 """
 
-MONTAGE_COMMAND = """
-    montage -background '#336699' -tile: {rows}x{cols} -geometry {width}x{height}+0+0 {input}/* {output}"""
+MONTAGE_COMMAND = """montage -background '#336699' -tile: {rows}x{cols} -geometry {width}x{height}+0+0 {input}/* {output}"""
 if shutil.which('magick'):
     MONTAGE_COMMAND = "magick " + MONTAGE_COMMAND
+else:
+    warnings.warn(f"{MONTAGE_COMMAND} not found in path. Unable to create frame sprite image!")
 
 
 class MontageSprites:
