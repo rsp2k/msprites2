@@ -1,11 +1,9 @@
+import logging
 import os
 import shlex
-import subprocess
-
 import shutil
-import logging
+import subprocess
 import time
-import warnings
 
 logger = logging.getLogger(__name__)
 
@@ -14,14 +12,14 @@ FFMPEG_THUMBNAIL_COMMAND = """
     ffmpeg -loglevel error -i {input} -r 1/{ips} -vf scale={width}:{height} {output}
 """
 
-MONTAGE_COMMAND = """montage -background '#336699' -tile: {rows}x{cols} -geometry {width}x{height}+0+0 {input}/* {output}"""
+MONTAGE_COMMAND = """montage -background '#336699' -tile {rows}x{cols} -geometry {width}x{height}+0+0 {input}/* {output}"""
 # Check for imagemagick6
-if shutil.which('magick'):
+if shutil.which("magick"):
     MONTAGE_COMMAND = "magick " + MONTAGE_COMMAND
 
 
 class MontageSprites:
-    IPS = 1 #  will be used as 1 in every 5 sec
+    IPS = 1  #  will be used as 1 in every 5 sec
     WIDTH = 512
     HEIGHT = 288
     ROWS = 30
@@ -56,8 +54,11 @@ class MontageSprites:
     def generate_thumbs(self):
         output = os.path.join(self.thumbnail_dir, self.FILENAME_FORMAT)
         cmd = FFMPEG_THUMBNAIL_COMMAND.format(
-            input=self.video_path, ips=self.IPS, width=self.WIDTH,
-            height=self.HEIGHT, output=output,
+            input=self.video_path,
+            ips=self.IPS,
+            width=self.WIDTH,
+            height=self.HEIGHT,
+            output=output,
         )
 
         logger.debug(f"ffmpeg generate thumbnails [{cmd}]")
@@ -84,24 +85,22 @@ class MontageSprites:
     def webvtt_getx(self, imnumber, w, h):
         # coordinate in sprite image for a given image
         gridsize = self.ROWS * self.COLS
-        imnumber = imnumber-((imnumber//gridsize)*gridsize)
-        hindex = imnumber//self.ROWS
+        imnumber = imnumber - ((imnumber // gridsize) * gridsize)
         windex = imnumber % self.COLS
-        return windex*w
+        return windex * w
 
     def webvtt_gety(self, imnumber, w, h):
         # coordinate in sprite image for a given image
         gridsize = self.ROWS * self.COLS
-        imnumber = imnumber-((imnumber//gridsize)*gridsize)
-        hindex = imnumber//self.ROWS
-        windex = imnumber % self.COLS
-        return hindex*h
+        imnumber = imnumber - ((imnumber // gridsize) * gridsize)
+        hindex = imnumber // self.ROWS
+        return hindex * h
 
     def webvtt_content(self):
         contents = [self.WEBVTT_HEADER]
         file_name = os.path.split(self.sprite_file)[1]
-        start, end, filename = 0, self.IPS, ""
-        w, h, gridsize = self.WIDTH, self.HEIGHT, self.ROWS * self.COLS
+        start, end = 0, self.IPS
+        w, h = self.WIDTH, self.HEIGHT
         for i in range(0, self.count_files()):
             contents += [
                 self.WEBVTT_TIMELINE_FORMAT.format(
@@ -109,9 +108,12 @@ class MontageSprites:
                     end=self.ips_seconds_to_timestamp(end),
                 ),
                 self.WEBVTT_IMAGE_TITLE_FORMAT.format(
-                    x=self.webvtt_getx(i, w, h), y=self.webvtt_gety(i, w, h),
-                    w=w, h=h, filename=file_name,
-                )
+                    x=self.webvtt_getx(i, w, h),
+                    y=self.webvtt_gety(i, w, h),
+                    w=w,
+                    h=h,
+                    filename=file_name,
+                ),
             ]
             start = end
             end += self.IPS
@@ -122,12 +124,21 @@ class MontageSprites:
             f.writelines(self.webvtt_content())
 
     @classmethod
-    def from_media(cls, video_path, thumbnail_dir, sprite_file, webvtt_file, delete_existing_thumbnail_dir=False):
+    def from_media(
+        cls,
+        video_path,
+        thumbnail_dir,
+        sprite_file,
+        webvtt_file,
+        delete_existing_thumbnail_dir=False,
+    ):
         if os.path.isdir(thumbnail_dir):
             if os.listdir(thumbnail_dir):
                 raise Exception(f"There are already files in {thumbnail_dir}!")
         else:
-            raise Exception(f"{thumbnail_dir} doesn't exist, create it before calling MontageSprites.from_media()")
+            raise Exception(
+                f"{thumbnail_dir} doesn't exist, create it before calling MontageSprites.from_media()"
+            )
 
         montage = MontageSprites(
             video_path=video_path,

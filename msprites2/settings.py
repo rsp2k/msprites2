@@ -1,12 +1,11 @@
 class Settings:
-    IPS = 5 #  will be used as 1/5 one in every 5 sec
+    IPS = 5  #  will be used as 1/5 one in every 5 sec
     WIDTH = 512
     HEIGHT = 288
     EXT = ".jpg"
     ROWS = 30
     COLS = 30
     FILENAME_FORMAT = "%04d{ext}"
-
 
     @classmethod
     def load(cls, width=None, height=None, ips=None, ext=None, rows=None, cols=None):

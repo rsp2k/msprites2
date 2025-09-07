@@ -44,23 +44,63 @@ f08e80da-bf1d-4e3d-8899-f0f6155f6efa.jpg#xywh=360,0,120,67
 
 Note that you cannot provide blank lines inside a metadata block, because the blank line signifies the end of the WebVTT cue.
 
-Installation
-```pip install msprites2```
+## Installation
+```bash
+pip install msprites2
+```
+
+## Development Setup
+
+### Modern Python Development (Recommended)
+```bash
+# Install uv (fast Python package installer)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Clone and setup project
+git clone https://github.com/rsp2k/msprites2.git
+cd msprites2
+
+# Create virtual environment and install dependencies
+uv sync --extra dev
+
+# Run linting and formatting
+uv run ruff check .
+uv run ruff format .
+
+# Run tests
+uv run pytest                    # Unit tests only
+uv run pytest -m slow          # Integration tests
+uv run pytest --cov=msprites2  # With coverage
+```
+
+### Traditional Setup
+```bash
+# Clone and install for development
+git clone https://github.com/rsp2k/msprites2.git
+cd msprites2
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Download test video fixtures (for integration tests)  
+python tests/fixtures/download_test_videos.py
+```
 
 # How to use:
-```
+```python
 import os
-from sprites2 import MontageSprites
+from msprites2 import MontageSprites
 
 sprite = MontageSprites.from_media(
     video_path="/tmp/SampleVideo_360x240_20mb.mp4",
-    thumbnail_dir="/tmp/samplevideo-thumbs" # Must be unique, or pass delete_existing_thumbnail_dir=True
-    sprite_file"framge-sprite.jpg",
+    thumbnail_dir="/tmp/samplevideo-thumbs",  # Must be unique, or pass delete_existing_thumbnail_dir=True
+    sprite_file="frame-sprite.jpg",
     webvtt_file="frame-sprite.webvtt",
     delete_existing_thumbnail_dir=False,
 )
 
-print(sprite.dir.name)
+print(sprite.thumbnail_dir)
 for filename in os.listdir(sprite.thumbnail_dir):
     print(filename)
 ```
