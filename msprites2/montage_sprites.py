@@ -4,6 +4,7 @@ import shlex
 import shutil
 import subprocess
 import time
+from typing import Callable, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,37 @@ class MontageSprites:
                 count += 1
         return count
 
-    def generate_thumbs(self):
+    def generate_thumbs(
+        self,
+        parallel: bool = False,
+        progress_callback: Optional[Callable[[int, int], None]] = None,
+    ):
+        """Generate thumbnail frames from video.
+
+        Args:
+            parallel: Use parallel extraction for better performance (default: False for compatibility)
+            progress_callback: Optional callback for progress reporting (parallel mode only)
+        """
+        if parallel:
+            try:
+                from .parallel_extractor import extract_frames_parallel
+
+                frame_count = extract_frames_parallel(
+                    video_path=self.video_path,
+                    output_dir=self.thumbnail_dir,
+                    width=self.WIDTH,
+                    height=self.HEIGHT,
+                    ips=self.IPS,
+                    progress_callback=progress_callback,
+                )
+                logger.info(f"Parallel extraction complete: {frame_count} frames")
+                return
+            except ImportError:
+                logger.warning(
+                    "ffmpeg-python not available, falling back to sequential extraction"
+                )
+
+        # Original sequential extraction
         output = os.path.join(self.thumbnail_dir, self.FILENAME_FORMAT)
         cmd = FFMPEG_THUMBNAIL_COMMAND.format(
             input=self.video_path,
@@ -131,7 +162,20 @@ class MontageSprites:
         sprite_file,
         webvtt_file,
         delete_existing_thumbnail_dir=False,
+        parallel=False,
+        progress_callback=None,
     ):
+        """Create sprites from media file.
+
+        Args:
+            video_path: Path to input video
+            thumbnail_dir: Directory for extracted frames
+            sprite_file: Output sprite sheet path
+            webvtt_file: Output WebVTT file path
+            delete_existing_thumbnail_dir: Whether to clear existing files
+            parallel: Use parallel frame extraction (default: False)
+            progress_callback: Progress reporting function for parallel mode
+        """
         if os.path.isdir(thumbnail_dir):
             if os.listdir(thumbnail_dir):
                 raise Exception(f"There are already files in {thumbnail_dir}!")
@@ -144,7 +188,48 @@ class MontageSprites:
             video_path=video_path,
             thumbnail_dir=thumbnail_dir,
         )
-        montage.generate_thumbs()
+        montage.generate_thumbs(parallel=parallel, progress_callback=progress_callback)
         montage.generate_sprite(sprite_file)
         montage.generate_webvtt(webvtt_file)
         return montage
+
+    def extract_streaming(
+        self, frame_processor: Optional[Callable[[str, int], str]] = None
+    ):
+        """Extract frames with streaming processing for real-time ML pipelines.
+
+        Yields frames as they're extracted, perfect for neural networks,
+        style transfer, or other frame-by-frame processing.
+
+        Args:
+            frame_processor: Optional function to process each frame
+
+        Yields:
+            Tuple[str, int]: (frame_path, frame_number)
+
+        Example:
+            >>> def apply_style_transfer(frame_path, frame_num):
+            ...     # Your ML model here
+            ...     return f"styled_{frame_num:04d}.jpg"
+
+            >>> sprite = MontageSprites("video.mp4", "frames/")
+            >>> for frame_path, num in sprite.extract_streaming(apply_style_transfer):
+            ...     print(f"Processed frame {num}")
+        """
+        try:
+            from .parallel_extractor import ParallelFrameExtractor
+
+            extractor = ParallelFrameExtractor(
+                video_path=self.video_path,
+                output_dir=self.thumbnail_dir,
+                width=self.WIDTH,
+                height=self.HEIGHT,
+                ips=self.IPS,
+            )
+
+            yield from extractor.extract_streaming(frame_processor)
+
+        except ImportError as e:
+            raise ImportError(
+                "ffmpeg-python required for streaming extraction. Install with: pip install ffmpeg-python"
+            ) from e
