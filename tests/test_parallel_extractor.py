@@ -292,7 +292,6 @@ class TestParallelIntegration:
                 mock_extract.assert_called_once()
 
 
-@pytest.mark.skipif(FFMPEG_AVAILABLE, reason="Testing ImportError handling")
 class TestMissingDependency:
     """Test behavior when ffmpeg-python is not available."""
 
@@ -302,8 +301,66 @@ class TestMissingDependency:
 
         sprite = MontageSprites(sample_video_path, temp_dir)
 
-        # Should fall back to sequential processing without error
-        with patch("subprocess.run") as mock_run:
-            sprite.generate_thumbs(parallel=True)
-            # Should have fallen back to sequential extraction
-            mock_run.assert_called_once()
+        # Mock sys.modules to simulate missing parallel_extractor module
+        import sys
+        original_modules = sys.modules.copy()
+        
+        try:
+            # Remove the parallel_extractor module if it exists
+            if 'msprites2.parallel_extractor' in sys.modules:
+                del sys.modules['msprites2.parallel_extractor']
+            
+            # Mock the module import to raise ImportError
+            def mock_import(name, *args, **kwargs):
+                if 'parallel_extractor' in name:
+                    raise ImportError("No module named 'ffmpeg'")
+                return original_import(name, *args, **kwargs)
+            
+            original_import = __builtins__['__import__']
+            __builtins__['__import__'] = mock_import
+            
+            # Should fall back to sequential processing without error
+            with patch("subprocess.run") as mock_run:
+                sprite.generate_thumbs(parallel=True)
+                # Should have fallen back to sequential extraction
+                mock_run.assert_called_once()
+                
+        finally:
+            # Restore original state
+            __builtins__['__import__'] = original_import
+            sys.modules.clear()
+            sys.modules.update(original_modules)
+    
+    def test_streaming_import_error(self, temp_dir, sample_video_path):
+        """Test streaming extraction with missing ffmpeg-python dependency."""
+        from msprites2 import MontageSprites
+
+        sprite = MontageSprites(sample_video_path, temp_dir)
+
+        # Mock sys.modules to simulate missing parallel_extractor module
+        import sys
+        original_modules = sys.modules.copy()
+        
+        try:
+            # Remove the parallel_extractor module if it exists
+            if 'msprites2.parallel_extractor' in sys.modules:
+                del sys.modules['msprites2.parallel_extractor']
+            
+            # Mock the module import to raise ImportError
+            def mock_import(name, *args, **kwargs):
+                if 'parallel_extractor' in name:
+                    raise ImportError("No module named 'ffmpeg'")
+                return original_import(name, *args, **kwargs)
+            
+            original_import = __builtins__['__import__']
+            __builtins__['__import__'] = mock_import
+            
+            # Should raise ImportError with helpful message
+            with pytest.raises(ImportError, match="ffmpeg-python required for streaming extraction"):
+                list(sprite.extract_streaming())
+                
+        finally:
+            # Restore original state
+            __builtins__['__import__'] = original_import
+            sys.modules.clear()
+            sys.modules.update(original_modules)
