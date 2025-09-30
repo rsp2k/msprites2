@@ -11,7 +11,7 @@
 
 # 🎬 **The Ultimate Video Processing & AI Library**
 
-*Transform videos into beautiful sprite sheets • Auto-generate captions with AI • Stream frames to ML models • Power your video platform*
+*Transform videos into sprite sheets • Auto-generate captions & visual descriptions with AI • Stream frames to ML models • Power your video platform*
 
 [![PyPI - Version](https://img.shields.io/pypi/v/msprites2?style=for-the-badge&logo=pypi&logoColor=white&color=006dad)](https://pypi.org/project/msprites2/)
 [![Python Version](https://img.shields.io/pypi/pyversions/msprites2?style=for-the-badge&logo=python&logoColor=white&color=3776ab)](https://pypi.org/project/msprites2/)
@@ -52,9 +52,10 @@
 |---------------------|---------------------------|-------------------------|
 | ✅ Thumbnail sprite generation | ✅ Streaming frame processing | ✅ Modern Python 3.9-3.13 |
 | ✅ WebVTT timeline creation | ✅ Neural network pipelines | ✅ Comprehensive test suite |
-| ✅ **Audio transcription (NEW!)** | ✅ Whisper AI integration | ✅ Performance benchmarking |
-| ✅ Parallel processing | ✅ Real-time style transfer | ✅ Type hints everywhere |
-| ✅ Custom resolutions | ✅ Object detection ready | ✅ Optional dependencies |
+| ✅ **Audio transcription** | ✅ Whisper AI integration | ✅ Performance benchmarking |
+| ✅ **Visual frame analysis** | ✅ Ollama vision models (llava, moondream) | ✅ Type hints everywhere |
+| ✅ Parallel processing | ✅ Real-time style transfer | ✅ Optional dependencies |
+| ✅ Custom resolutions | ✅ Object detection ready | ✅ 42+ passing tests |
 
 ---
 
@@ -247,6 +248,88 @@ Let's start with the basics!
 - 🔍 **Search & Indexing** → Make video content searchable by speech
 - 🌍 **Internationalization** → Transcribe then translate to other languages
 - 📊 **Content Analysis** → Analyze what's being said in videos
+
+### **🖼️ Visual Frame Analysis with AI**
+
+**NEW in v0.12.0!** Analyze video frames using Ollama vision models (llava, moondream) to generate visual descriptions:
+
+```python
+from msprites2 import VisualAnalyzer
+
+# Initialize with your preferred vision model
+analyzer = VisualAnalyzer(
+    model="llava:7b",  # or "llava:13b", "moondream"
+    ollama_host="https://ollama.l.supported.systems",
+    fps=1.0  # Frame rate for timestamp calculation
+)
+
+# Analyze extracted frames and generate WebVTT descriptions
+descriptions = analyzer.analyze_frames_to_webvtt(
+    "frames/",
+    "visual_descriptions.vtt",
+    max_frames=100  # Optional: limit number of frames
+)
+
+print(f"✅ Generated {len(descriptions)} visual descriptions!")
+```
+
+**Advanced Usage with Custom Prompts:**
+
+```python
+from msprites2 import VisualAnalyzer
+
+# Custom analysis prompt
+analyzer = VisualAnalyzer(
+    model="llava:13b",
+    prompt="Describe the main action and emotions in this scene in detail."
+)
+
+# Analyze with progress tracking
+def on_progress(current, total):
+    print(f"🔍 Analyzing frame {current}/{total}...")
+
+descriptions = analyzer.analyze_frames(
+    "frames/",
+    pattern="*.jpg",
+    progress_callback=on_progress
+)
+
+# Save to WebVTT with custom cue duration
+analyzer.save_webvtt(descriptions, "descriptions.vtt", cue_duration=2.0)
+```
+
+**Generated Visual Description WebVTT:**
+```webvtt
+WEBVTT
+KIND: descriptions
+
+1
+00:00:00.000 --> 00:00:01.000
+A person typing on a laptop in a modern office setting.
+
+2
+00:00:01.000 --> 00:00:02.000
+Close-up of hands gesturing while explaining a concept.
+
+3
+00:00:02.000 --> 00:00:03.000
+Wide shot of a conference room with people collaborating.
+```
+
+**Use Cases:**
+- ♿ **Accessibility** → Visual descriptions for blind/low-vision viewers
+- 🔍 **Content Discovery** → Search videos by visual content
+- 📊 **AI/ML Pipelines** → Automated scene understanding
+- 🎬 **Content Moderation** → Detect inappropriate visual content
+
+**Installation:**
+```bash
+# Install with vision support
+pip install msprites2[vision]
+
+# Or install all AI features (transcription + vision)
+pip install msprites2[ai]
+```
 
 ### **⚙️ Advanced Configuration**
 

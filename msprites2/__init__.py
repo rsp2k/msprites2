@@ -1,5 +1,8 @@
 from .montage_sprites import MontageSprites
 
+# Build __all__ dynamically based on available optional dependencies
+__all__ = ["MontageSprites"]
+
 # Audio transcription (optional, requires faster-whisper)
 try:
     from .audio_transcription import (
@@ -8,14 +11,18 @@ try:
         transcribe_video,
     )
 
-    __all__ = [
-        "MontageSprites",
-        "AudioTranscriber",
-        "TranscriptionSegment",
-        "transcribe_video",
-    ]
+    __all__.extend(["AudioTranscriber", "TranscriptionSegment", "transcribe_video"])
 except ImportError:
-    # faster-whisper not installed
-    __all__ = [
-        "MontageSprites",
-    ]
+    pass
+
+# Visual analysis (optional, requires ollama)
+try:
+    from .visual_analysis import (
+        VisualAnalyzer,
+        FrameDescription,
+        analyze_video_frames,
+    )
+
+    __all__.extend(["VisualAnalyzer", "FrameDescription", "analyze_video_frames"])
+except ImportError:
+    pass
