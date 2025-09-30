@@ -9,9 +9,9 @@
                |_|
 ```
 
-# 🎬 **The Ultimate Video Thumbnail & ML Processing Library**
+# 🎬 **The Ultimate Video Processing & AI Library**
 
-*Transform videos into beautiful sprite sheets • Stream frames to AI models • Power your video platform*
+*Transform videos into beautiful sprite sheets • Auto-generate captions with AI • Stream frames to ML models • Power your video platform*
 
 [![PyPI - Version](https://img.shields.io/pypi/v/msprites2?style=for-the-badge&logo=pypi&logoColor=white&color=006dad)](https://pypi.org/project/msprites2/)
 [![Python Version](https://img.shields.io/pypi/pyversions/msprites2?style=for-the-badge&logo=python&logoColor=white&color=3776ab)](https://pypi.org/project/msprites2/)
@@ -52,8 +52,9 @@
 |---------------------|---------------------------|-------------------------|
 | ✅ Thumbnail sprite generation | ✅ Streaming frame processing | ✅ Modern Python 3.9-3.13 |
 | ✅ WebVTT timeline creation | ✅ Neural network pipelines | ✅ Comprehensive test suite |
-| ✅ Parallel processing | ✅ Real-time style transfer | ✅ Performance benchmarking |
-| ✅ Custom resolutions | ✅ Object detection ready | ✅ Type hints everywhere |
+| ✅ **Audio transcription (NEW!)** | ✅ Whisper AI integration | ✅ Performance benchmarking |
+| ✅ Parallel processing | ✅ Real-time style transfer | ✅ Type hints everywhere |
+| ✅ Custom resolutions | ✅ Object detection ready | ✅ Optional dependencies |
 
 ---
 
@@ -70,7 +71,7 @@ sprite = MontageSprites.from_media("video.mp4", "thumbnails/", "sprite.jpg", "ti
 
 **That's it!** You'll get:
 - 📸 **sprite.jpg** → Beautiful thumbnail grid
-- 📝 **timeline.webvtt** → Perfect video player integration
+- 📝 **timeline.webvtt** → Perfect video player integration ([WebVTT spec](https://www.w3.org/TR/webvtt1/))
 - 📁 **thumbnails/** → Individual frames for processing
 
 ---
@@ -113,7 +114,18 @@ pip install msprites2
 ### **✅ Verify Installation**
 ```python
 import msprites2
-print(f"🎉 msprites2 v{msprites2.__version__} ready!")
+print(f"🎉 msprites2 ready!")
+```
+
+### **🎙️ Audio Transcription (Optional)**
+Generate WebVTT captions from video audio using Whisper AI:
+
+```bash
+# Install with transcription support
+pip install msprites2[transcription]
+
+# Or install all AI features
+pip install msprites2[ai]
 ```
 
 ---
@@ -166,6 +178,75 @@ sprite = MontageSprites("video.mp4", "frames/")
 for styled_path, frame_num in sprite.extract_streaming(neural_style_transfer):
     print(f"🎨 Styled frame {frame_num}: {styled_path}")
 ```
+
+### **🎙️ Audio Transcription & Captions**
+
+**NEW in v0.11.0!** Generate [WebVTT captions](https://www.w3.org/TR/webvtt1/) from video audio using Whisper AI:
+
+```python
+from msprites2 import transcribe_video
+
+# One-liner: transcribe video → WebVTT captions
+segments = transcribe_video(
+    "video.mp4",
+    "captions.vtt",
+    model_size="base",  # tiny, base, small, medium, large-v3
+    language="en"       # or None for auto-detect
+)
+
+print(f"✅ Generated {len(segments)} caption segments!")
+```
+
+**Advanced Usage:**
+
+```python
+from msprites2 import AudioTranscriber
+
+# Initialize transcriber with custom settings
+transcriber = AudioTranscriber(
+    model_size="medium",  # Better accuracy
+    device="cuda",        # GPU acceleration (or "cpu")
+    compute_type="float16",  # Precision
+    language="en"         # Force English
+)
+
+# Transcribe with progress tracking
+def on_progress(elapsed_time):
+    print(f"⏰ Processed {elapsed_time:.1f}s of audio...")
+
+segments = transcriber.transcribe(
+    "video.mp4",
+    beam_size=5,          # Higher = better quality
+    vad_filter=True,      # Skip silence
+    progress_callback=on_progress
+)
+
+# Save to WebVTT format
+transcriber.save_webvtt(segments, "captions.vtt")
+```
+
+**Generated WebVTT Output:**
+```webvtt
+WEBVTT
+
+1
+00:00:00.000 --> 00:00:02.500
+Welcome to our video tutorial.
+
+2
+00:00:02.500 --> 00:00:05.000
+Today we'll learn about Python programming.
+
+3
+00:00:05.000 --> 00:00:08.500
+Let's start with the basics!
+```
+
+**Use Cases:**
+- 📝 **Accessibility** → Auto-generate subtitles for deaf/hard-of-hearing viewers
+- 🔍 **Search & Indexing** → Make video content searchable by speech
+- 🌍 **Internationalization** → Transcribe then translate to other languages
+- 📊 **Content Analysis** → Analyze what's being said in videos
 
 ### **⚙️ Advanced Configuration**
 

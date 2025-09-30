@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "msprites2"
-version = "0.10.0"
-description = "Create thumbnail spritesheet and webvtt from video files"
+version = "0.11.0"
+description = "Create thumbnail spritesheets, generate AI-powered captions, and process video frames with WebVTT output"
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
@@ -28,7 +28,7 @@ classifiers = [
     "Topic :: Multimedia :: Video",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-keywords = ["video", "thumbnails", "sprites", "webvtt", "ffmpeg", "imagemagick"]
+keywords = ["video", "thumbnails", "sprites", "webvtt", "ffmpeg", "imagemagick", "transcription", "captions", "whisper", "subtitles"]
 requires-python = ">=3.9"
 dependencies = [
     "ffmpeg-python>=0.2.0",
@@ -49,6 +49,17 @@ dev = [
 test = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
+]
+transcription = [
+    "faster-whisper>=1.2.0",
+]
+ai = [
+    "faster-whisper>=1.2.0",
+    "ollama>=0.4.8",
+]
+all = [
+    "faster-whisper>=1.2.0",
+    "ollama>=0.4.8",
 ]
 
 [tool.hatch.build.targets.sdist]
