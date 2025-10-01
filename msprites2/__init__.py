@@ -8,10 +8,24 @@ try:
     from .audio_transcription import (
         AudioTranscriber,
         TranscriptionSegment,
+        WordTimestamp,
         transcribe_video,
     )
 
-    __all__.extend(["AudioTranscriber", "TranscriptionSegment", "transcribe_video"])
+    __all__.extend(["AudioTranscriber", "TranscriptionSegment", "WordTimestamp", "transcribe_video"])
+except ImportError:
+    pass
+
+# Transcript enhancers (optional, requires ollama for OllamaTextEnhancer)
+try:
+    from .enhancers import (
+        TranscriptEnhancer,
+        OllamaTextEnhancer,
+        SimpleEnhancer,
+        create_enhancer,
+    )
+
+    __all__.extend(["TranscriptEnhancer", "OllamaTextEnhancer", "SimpleEnhancer", "create_enhancer"])
 except ImportError:
     pass
 

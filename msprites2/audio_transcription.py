@@ -10,8 +10,9 @@ Example:
 """
 
 import os
-from typing import Optional, Literal, Callable
-from dataclasses import dataclass
+import json
+from typing import Optional, Literal, Callable, List, Dict, Any
+from dataclasses import dataclass, field, asdict
 
 # Check if faster-whisper is available
 try:
@@ -23,12 +24,40 @@ except ImportError:
 
 
 @dataclass
+class WordTimestamp:
+    """Represents a word with precise timing information."""
+
+    word: str
+    start: float
+    end: float
+    probability: float = 0.0
+
+
+@dataclass
 class TranscriptionSegment:
-    """Represents a transcription segment with timing and text."""
+    """Represents a transcription segment with timing, text, and optional metadata.
+
+    Attributes:
+        start: Segment start time in seconds
+        end: Segment end time in seconds
+        text: Original transcribed text from Whisper
+        enhanced_text: Optional enhanced/corrected text from post-processing
+        confidence: Segment-level confidence score (0.0-1.0)
+        words: Optional word-level timestamps and probabilities
+        speaker_id: Optional speaker identification
+        language: Detected or specified language code
+        metadata: Additional custom metadata
+    """
 
     start: float
     end: float
     text: str
+    enhanced_text: Optional[str] = None
+    confidence: Optional[float] = None
+    words: List[WordTimestamp] = field(default_factory=list)
+    speaker_id: Optional[str] = None
+    language: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_webvtt_timestamp(self, seconds: float) -> str:
         """Convert seconds to WebVTT timestamp format (HH:MM:SS.mmm)."""
@@ -37,11 +66,36 @@ class TranscriptionSegment:
         secs = seconds % 60
         return f"{hours:02d}:{minutes:02d}:{secs:06.3f}"
 
-    def to_webvtt_cue(self) -> str:
-        """Format segment as a WebVTT cue block."""
+    def to_webvtt_cue(self, use_enhanced: bool = False) -> str:
+        """Format segment as a WebVTT cue block.
+
+        Args:
+            use_enhanced: Use enhanced_text if available, otherwise use text
+        """
         start_ts = self.to_webvtt_timestamp(self.start)
         end_ts = self.to_webvtt_timestamp(self.end)
-        return f"{start_ts} --> {end_ts}\n{self.text.strip()}\n"
+        content = self.enhanced_text if (use_enhanced and self.enhanced_text) else self.text
+        return f"{start_ts} --> {end_ts}\n{content.strip()}\n"
+
+    def to_srt_cue(self, index: int, use_enhanced: bool = False) -> str:
+        """Format segment as an SRT cue block.
+
+        Args:
+            index: 1-based cue index for SRT format
+            use_enhanced: Use enhanced_text if available
+        """
+        start_ts = self.to_webvtt_timestamp(self.start).replace(".", ",")
+        end_ts = self.to_webvtt_timestamp(self.end).replace(".", ",")
+        content = self.enhanced_text if (use_enhanced and self.enhanced_text) else self.text
+        return f"{index}\n{start_ts} --> {end_ts}\n{content.strip()}\n"
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert segment to dictionary for JSON serialization."""
+        data = asdict(self)
+        # Convert WordTimestamp objects to dicts
+        if self.words:
+            data["words"] = [asdict(w) for w in self.words]
+        return data
 
 
 class AudioTranscriber:
@@ -73,6 +127,7 @@ class AudioTranscriber:
         device: Literal["cpu", "cuda", "auto"] = "auto",
         compute_type: Literal["int8", "float16", "float32"] = "int8",
         language: Optional[str] = None,
+        enhancer: Optional["TranscriptEnhancer"] = None,
     ):
         """Initialize the transcriber with a Whisper model.
 
@@ -87,6 +142,7 @@ class AudioTranscriber:
             compute_type: Precision ('int8' for CPU, 'float16' for GPU)
             language: Force a specific language code (e.g., 'en', 'es', 'fr')
                      If None, language will be auto-detected
+            enhancer: Optional TranscriptEnhancer for post-processing transcripts
         """
         if not FASTER_WHISPER_AVAILABLE:
             raise ImportError(
@@ -98,6 +154,8 @@ class AudioTranscriber:
         self.device = device
         self.compute_type = compute_type
         self.language = language
+        self.enhancer = enhancer
+        self._post_processors: List[Callable] = []
         self.model = WhisperModel(
             model_size, device=device, compute_type=compute_type
         )
@@ -219,6 +277,225 @@ class AudioTranscriber:
         )
         self.save_webvtt(segments, output_path)
         return segments
+
+    def register_post_processor(self, processor_func: Callable):
+        """Register a custom post-processing function for transcript enhancement.
+
+        Post-processors are called in order after the enhancer (if present).
+        Each processor should be an async function that takes (text, context) and returns enhanced text.
+
+        Args:
+            processor_func: Async function with signature (text: str, context: str) -> str
+
+        Example:
+            >>> async def remove_profanity(text: str, context: str) -> str:
+            ...     # Custom filtering logic
+            ...     return text.replace("bad_word", "***")
+            >>>
+            >>> transcriber.register_post_processor(remove_profanity)
+        """
+        self._post_processors.append(processor_func)
+
+    async def transcribe_enhanced(
+        self,
+        video_path: str,
+        context: str = "general",
+        language: Optional[str] = None,
+        beam_size: int = 5,
+        vad_filter: bool = True,
+        progress_callback: Optional[Callable[[float], None]] = None,
+    ) -> tuple[list[TranscriptionSegment], Optional[str]]:
+        """Transcribe with enhancement pipeline using enhancer and post-processors.
+
+        This method runs the full enhancement pipeline:
+        1. Base Whisper transcription
+        2. Enhancer processing (if configured)
+        3. Custom post-processors (if registered)
+
+        Args:
+            video_path: Path to video file
+            context: Domain context for enhancement (technical, educational, medical, etc.)
+            language: Override language detection
+            beam_size: Beam size for decoding
+            vad_filter: Use Voice Activity Detection
+            progress_callback: Optional callback for progress updates
+
+        Returns:
+            Tuple of (segments, enhanced_text) where enhanced_text may be None if no enhancer
+
+        Example:
+            >>> from msprites2.enhancers import OllamaTextEnhancer
+            >>> enhancer = OllamaTextEnhancer(model="llama3.1:8b")
+            >>> transcriber = AudioTranscriber(enhancer=enhancer)
+            >>> segments, enhanced = await transcriber.transcribe_enhanced(
+            ...     "video.mp4",
+            ...     context="technical"
+            ... )
+            >>> print(f"Raw: {segments[0].text}")
+            >>> print(f"Enhanced: {enhanced[:100]}")
+        """
+        import asyncio
+
+        # Step 1: Base transcription
+        segments = self.transcribe(
+            video_path,
+            language=language,
+            beam_size=beam_size,
+            vad_filter=vad_filter,
+            progress_callback=progress_callback,
+        )
+
+        # Step 2: Apply enhancer if available
+        enhanced_text = None
+        if self.enhancer:
+            raw_text = " ".join([seg.text for seg in segments])
+            enhanced_text = await self.enhancer.enhance(raw_text, context)
+
+        # Step 3: Apply custom post-processors
+        current_text = enhanced_text or " ".join([seg.text for seg in segments])
+        for processor in self._post_processors:
+            current_text = await processor(current_text, context)
+
+        # Update enhanced_text if post-processors were applied
+        if self._post_processors:
+            enhanced_text = current_text
+
+        # Store enhanced text in segments for easy access
+        if enhanced_text:
+            for seg in segments:
+                seg.metadata["enhanced_full_text"] = enhanced_text
+
+        return segments, enhanced_text
+
+    def save_all_formats(
+        self,
+        segments: list[TranscriptionSegment],
+        output_dir: str,
+        base_name: str = "transcript",
+        formats: list[str] = None,
+        enhanced_text: Optional[str] = None,
+        use_enhanced: bool = True,
+    ):
+        """Save transcription in multiple formats.
+
+        Args:
+            segments: List of TranscriptionSegment objects
+            output_dir: Directory to save output files
+            base_name: Base filename (without extension)
+            formats: List of formats to generate (default: ["json", "txt", "webvtt", "srt"])
+            enhanced_text: Optional enhanced full text
+            use_enhanced: Whether to use enhanced_text in output files
+
+        Supported formats:
+            - json: Full JSON with metadata
+            - txt: Plain text with timestamps
+            - webvtt: WebVTT caption file
+            - srt: SubRip (SRT) caption file
+
+        Example:
+            >>> segments, enhanced = await transcriber.transcribe_enhanced("video.mp4")
+            >>> transcriber.save_all_formats(
+            ...     segments,
+            ...     "output/",
+            ...     formats=["json", "webvtt", "srt"],
+            ...     enhanced_text=enhanced
+            ... )
+        """
+        if formats is None:
+            formats = ["json", "txt", "webvtt", "srt"]
+
+        os.makedirs(output_dir, exist_ok=True)
+
+        if "json" in formats:
+            self._save_json(
+                segments,
+                enhanced_text,
+                os.path.join(output_dir, f"{base_name}.json"),
+            )
+        if "txt" in formats:
+            self._save_txt(
+                segments,
+                enhanced_text,
+                os.path.join(output_dir, f"{base_name}.txt"),
+                use_enhanced=use_enhanced,
+            )
+        if "webvtt" in formats:
+            self._save_webvtt_enhanced(
+                segments,
+                os.path.join(output_dir, f"{base_name}.vtt"),
+                use_enhanced=use_enhanced,
+            )
+        if "srt" in formats:
+            self._save_srt(
+                segments,
+                os.path.join(output_dir, f"{base_name}.srt"),
+                use_enhanced=use_enhanced,
+            )
+
+    def _save_json(
+        self,
+        segments: list[TranscriptionSegment],
+        enhanced_text: Optional[str],
+        path: str,
+    ):
+        """Save transcription as JSON with full metadata."""
+        data = {
+            "enhanced_text": enhanced_text,
+            "raw_text": " ".join([seg.text for seg in segments]),
+            "segments": [seg.to_dict() for seg in segments],
+            "metadata": {
+                "model_size": self.model_size,
+                "device": self.device,
+                "language": self.language,
+                "segment_count": len(segments),
+            },
+        }
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+
+    def _save_txt(
+        self,
+        segments: list[TranscriptionSegment],
+        enhanced_text: Optional[str],
+        path: str,
+        use_enhanced: bool = True,
+    ):
+        """Save transcription as formatted text file."""
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("# Transcript\n\n")
+
+            if enhanced_text and use_enhanced:
+                f.write("## Enhanced Version\n\n")
+                f.write(enhanced_text)
+                f.write("\n\n## Raw Segments\n\n")
+            else:
+                f.write("## Transcript Segments\n\n")
+
+            for seg in segments:
+                start_time = f"{int(seg.start//60):02d}:{int(seg.start%60):02d}"
+                end_time = f"{int(seg.end//60):02d}:{int(seg.end%60):02d}"
+                text = seg.enhanced_text if (use_enhanced and seg.enhanced_text) else seg.text
+                f.write(f"**[{start_time} - {end_time}]**: {text}\n\n")
+
+    def _save_webvtt_enhanced(
+        self, segments: list[TranscriptionSegment], path: str, use_enhanced: bool = True
+    ):
+        """Save WebVTT with option to use enhanced text."""
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(self.WEBVTT_HEADER)
+            for i, segment in enumerate(segments, 1):
+                f.write(f"{i}\n")
+                f.write(segment.to_webvtt_cue(use_enhanced=use_enhanced))
+                f.write("\n")
+
+    def _save_srt(
+        self, segments: list[TranscriptionSegment], path: str, use_enhanced: bool = True
+    ):
+        """Save as SRT (SubRip) format."""
+        with open(path, "w", encoding="utf-8") as f:
+            for i, segment in enumerate(segments, 1):
+                f.write(segment.to_srt_cue(index=i, use_enhanced=use_enhanced))
+                f.write("\n")
 
 
 def transcribe_video(
