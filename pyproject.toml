@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "msprites2"
-version = "0.12.0"
+version = "0.12.1"
 description = "Create thumbnail spritesheets, generate AI-powered captions & visual descriptions, and process video frames with WebVTT output"
 readme = "README.md"
 license = { file = "LICENSE" }

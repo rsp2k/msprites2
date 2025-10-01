@@ -16,6 +16,14 @@ from typing import Optional, Literal, Callable, Union
 from dataclasses import dataclass
 import json
 
+# Check if ollama is available
+try:
+    import ollama
+    OLLAMA_AVAILABLE = True
+except ImportError:
+    OLLAMA_AVAILABLE = False
+    ollama = None
+
 
 @dataclass
 class FrameDescription:
@@ -84,13 +92,11 @@ class VisualAnalyzer:
             fps: Frames per second (used for timestamp calculation)
             prompt: Custom prompt for frame analysis (uses default if None)
         """
-        try:
-            import ollama
-        except ImportError as e:
+        if not OLLAMA_AVAILABLE:
             raise ImportError(
                 "ollama is required for visual analysis. "
-                "Install it with: pip install msprites2[ai]"
-            ) from e
+                "Install it with: pip install msprites2[vision] or pip install msprites2[ai]"
+            )
 
         self.model = model
         self.ollama_host = ollama_host

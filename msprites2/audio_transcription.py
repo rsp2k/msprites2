@@ -13,6 +13,14 @@ import os
 from typing import Optional, Literal, Callable
 from dataclasses import dataclass
 
+# Check if faster-whisper is available
+try:
+    from faster_whisper import WhisperModel
+    FASTER_WHISPER_AVAILABLE = True
+except ImportError:
+    FASTER_WHISPER_AVAILABLE = False
+    WhisperModel = None
+
 
 @dataclass
 class TranscriptionSegment:
@@ -80,13 +88,11 @@ class AudioTranscriber:
             language: Force a specific language code (e.g., 'en', 'es', 'fr')
                      If None, language will be auto-detected
         """
-        try:
-            from faster_whisper import WhisperModel
-        except ImportError as e:
+        if not FASTER_WHISPER_AVAILABLE:
             raise ImportError(
                 "faster-whisper is required for audio transcription. "
                 "Install it with: pip install msprites2[transcription]"
-            ) from e
+            )
 
         self.model_size = model_size
         self.device = device
